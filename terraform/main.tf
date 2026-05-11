@@ -22,7 +22,7 @@ data "aws_ami" "amazon_linux_2" {
 # =========================
 
 resource "aws_key_pair" "deployer" {
-  key_name   = "homepage-key"
+  key_name   = "homepage-sshkey"
   public_key = file("C:/Users/ros/.ssh/id_ed25519.pub")
 }
 
