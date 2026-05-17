@@ -1,7 +1,18 @@
+# Go bin
+rserver.exe
+main.exe
+# Секреты — НИКОГДА не коммитим
+.env
+terraform.tfvars
+
+# PDF резюме (генерируется отдельно)
+static/resume.pdf
+
 # Ignore .git
 .git
 
-# Ignore Terraform runtime directory inside terraform/
+# Terraform runtime directory
+.terraform/
 terraform/.terraform/
 
 # Terraform state and backups

@@ -3,22 +3,25 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # 1. Метрики вашего Go-приложения (порт изменен на приватный 8081)
+  # 1. Метрики Go-приложения (приватный порт, не экспонируется наружу)
   - job_name: "go-app"
     static_configs:
       - targets: ["app:8081"]
 
-  # 2. Метрики железа EC2 (так как network_mode: host, собираем через localhost)
+  # 2. Метрики хост-машины EC2
+  # node-exporter работает в network_mode: host и слушает на порту хоста.
+  # Prometheus находится в bridge-сети, поэтому обращается через host-gateway,
+  # который прописан в docker-compose extra_hosts как host.docker.internal.
   - job_name: "node-exporter"
     static_configs:
-      - targets: ["localhost:9100"]
+      - targets: ["host.docker.internal:9100"]
 
-  # 3. Метрики потребления ресурсов Docker-контейнеров
+  # 3. Метрики Docker-контейнеров
   - job_name: "cadvisor"
     static_configs:
       - targets: ["cadvisor:8080"]
 
-  # 4. Самомониторинг Prometheus
+  # 4. Самомониторинг Prometheus (localhost корректен — Prometheus скрейпит сам себя)
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]

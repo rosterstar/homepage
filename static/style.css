@@ -58,10 +58,12 @@ body {
     margin-bottom: 3px;
 }
 
+/* Кнопка Download PDF — белый текст на сером фоне.
+   Специфичность #pdf выше чем a, поэтому !important не нужен. */
 #pdf {
     display: inline-block;
     background: #666;
-    color: #fff !important;
+    color: #fff;
     padding: 6px 25px;
     text-decoration: none;
     font-size: 14px;
@@ -133,16 +135,18 @@ ul {
     margin-right: 2%;
 }
 
-/* Опыт / Проекты / Университет (Цвет названия) */
-.job h2,
-.main h2 {
+/* Заголовки в контентной области.
+   body задаёт color: #ab2828 для всего документа.
+   Здесь явно переопределяем для h2/h3/h4 внутри контента —
+   без !important, потому что селекторы достаточно специфичны. */
+.yui-u.main h2,
+.job h2 {
     font-size: 120%;
-    color: #333 !important;
-    /* Принудительно черный для всех заголовков в контенте */
+    color: #333;
 }
 
-.job h3,
-.main h3 {
+.yui-u.main h3,
+.job h3 {
     font-size: 100%;
     color: #444;
 }
@@ -212,70 +216,69 @@ ul {
     }
 }
 
-/* --- ПЕЧАТЬ (Финальное сжатие) --- */
+/* --- ПЕЧАТЬ --- */
 @media print {
     @page {
         margin: 0;
     }
 
-    /* Убираем системные отступы бумаги */
-
     body {
-        padding: 0 !important;
-        background: #fff !important;
+        padding: 0;
+        background: #fff;
     }
 
     #inner {
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 5px 40px !important;
-        box-shadow: none !important;
-        background: #f5f5f5 !important;
+        width: 100%;
+        margin: 0;
+        padding: 5px 40px;
+        box-shadow: none;
+        background: #f5f5f5;
         -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
     #pdf,
     #ft {
-        display: none !important;
+        display: none;
     }
 
     #hd {
-        margin-bottom: 0.5em !important;
-        padding-bottom: 0.5em !important;
+        margin-bottom: 0.5em;
+        padding-bottom: 0.5em;
     }
 
     #hd h1 {
-        font-size: 22pt !important;
+        font-size: 22pt;
     }
 
     .yui-gf {
-        margin-bottom: 0.4em !important;
-        padding-bottom: 0.4em !important;
+        margin-bottom: 0.4em;
+        padding-bottom: 0.4em;
     }
 
     .enlarge {
-        font-size: 11pt !important;
-        line-height: 1.1 !important;
-        margin-bottom: 5px !important;
+        font-size: 11pt;
+        line-height: 1.1;
+        margin-bottom: 5px;
     }
 
     p,
     li,
     .job p {
-        font-size: 8.5pt !important;
-        line-height: 1.2 !important;
-        margin-bottom: 2px !important;
+        font-size: 8.5pt;
+        line-height: 1.2;
+        margin-bottom: 2px;
     }
 
     .yui-u.first h2,
-    .job h2,
-    .main h2 {
-        font-size: 10pt !important;
+    .yui-u.main h2,
+    .job h2 {
+        font-size: 10pt;
     }
 
+    .yui-u.main h3,
     .job h3,
-    .main h3,
     .job h4 {
-        font-size: 9pt !important;
+        font-size: 9pt;
     }
 }

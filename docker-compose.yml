@@ -2,16 +2,23 @@ version: '3.8'
 
 services:
   app:
-    # Используем переменные через ${VAR_NAME}
     image: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
     restart: always
+    env_file:
+      - .env
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   caddy:
-    image: caddy:latest
+    image: caddy:2
     restart: always
     ports:
       - "80:80"
@@ -22,7 +29,80 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+    # Ждём не просто запуска контейнера, а реальной готовности сервисов
+    depends_on:
+      app:
+        condition: service_healthy
+      grafana:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=48h'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    # Порт 9090 не экспонируем наружу — доступ только через Caddy (subdomain + basic_auth)
+    extra_hosts:
+      # Позволяет Prometheus достучаться до node-exporter на хосте (network_mode: host)
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  grafana:
+    image: grafana/grafana-oss:11.1.0
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    # Порт 3000 не экспонируем — доступ через Caddy (grafana.domain)
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: node-exporter
+    restart: unless-stopped
+    # network_mode: host — единственный способ получить метрики хост-машины EC2
+    # (а не контейнера). Слушает на хостовом :9100.
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - '--path.rootfs=/host'
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
 
 volumes:
   caddy_data:
   caddy_config:
+  prometheus_data:
+  grafana_data:

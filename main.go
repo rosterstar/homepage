@@ -4,44 +4,79 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"time"
+	"os"
+
+	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Данные, которые мы будем передавать в HTML
+// Структура для передачи в index.html
 type PageData struct {
-	Title   string
-	Message string
-	Time    string
+	EmailUser   string
+	EmailDomain string
+}
+
+// tmpl парсится один раз при старте — не при каждом запросе.
+// template.Must завершает программу с паникой если шаблон невалиден,
+// что лучше чем молча отдавать 500 на каждый запрос в prod.
+var tmpl = template.Must(template.ParseFiles("templates/index.html"))
+
+// Middleware для добавления заголовков безопасности
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	// 1. Подготавливаем данные
 	data := PageData{
-		Title:   "Моя домашняя страница",
-		Message: "Добро пожаловать в мой пет-проект на Go!",
-		Time:    time.Now().Format("15:04:05"),
+		EmailUser:   os.Getenv("EMAIL_USER"),
+		EmailDomain: os.Getenv("EMAIL_DOMAIN"),
 	}
 
-	// 2. Парсим файл шаблона (создадим его ниже)
-	tmpl, err := template.ParseFiles("templates/index.html")
-	if err != nil {
-		http.Error(w, "Ошибка загрузки шаблона", http.StatusInternalServerError)
-		return
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Ошибка выполнения шаблона: %v\n", err)
 	}
-
-	// 3. Объединяем шаблон и данные (рендеринг)
-	tmpl.Execute(w, data)
 }
 
 func main() {
-	// Раздача статических файлов (CSS, изображения) из папки "static"
+	if err := godotenv.Load(); err != nil {
+		log.Println("Предупреждение: файл .env не найден, берутся системные переменные")
+	}
+
+	// 1. НАСТРОЙКА ОСНОВНОГО СЕРВЕРА (Резюме)
+	mux := http.NewServeMux()
+
 	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+	mux.HandleFunc("/", homeHandler)
 
-	http.HandleFunc("/", homeHandler)
+	secureMux := securityHeadersMiddleware(mux)
 
-	log.Println("Сервер запущен на http://localhost:8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	// 2. НАСТРОЙКА СЕРВЕРА МЕТРИК (Prometheus) на приватном порту 8081
+	metricMux := http.NewServeMux()
+	metricMux.Handle("/metrics", promhttp.Handler())
+
+	// Запускаем сервер метрик в горутине — он не блокирует основной сервер
+	go func() {
+		log.Println("Сервер метрик Prometheus запущен на http://localhost:8081/metrics")
+		if err := http.ListenAndServe(":8081", metricMux); err != nil {
+			log.Fatalf("Ошибка запуска сервера метрик: %v\n", err)
+		}
+	}()
+
+	// Запуск основного сервера (блокирующий вызов)
+	log.Printf("Основной сервер запущен на http://localhost:%s\n", port)
+	if err := http.ListenAndServe(":"+port, secureMux); err != nil {
 		log.Fatal(err)
 	}
 }

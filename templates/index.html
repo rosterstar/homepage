@@ -10,17 +10,23 @@
 
 <body>
     <div id="inner">
+        <!-- Шапка (Левая часть и Правая часть теперь изолированы) -->
         <div id="hd">
             <div>
                 <h1>Starostsenko Rastislav</h1>
                 <h2>DevOps Engineer</h2>
             </div>
             <div class="contact-info">
-                <h3><a id="pdf" href="/static/resume.pdf" download="Starostsenko_Rastislav_CV.pdf">Download PDF</a></h3>
-                <h3><a href="mailto:info@starostsenko.xyz">info@starostsenko.xyz</a></h3>
+                <h3><a id="pdf" href="/static/resume.pdf" download>Download PDF</a></h3>
+                <h3>
+                    <a href="#" id="email-link" data-user="{{.EmailUser}}" data-domain="{{.EmailDomain}}">
+                        Click to see email
+                    </a>
+                </h3>
             </div>
         </div>
 
+        <!-- Главный контентный блок (Вынесен за пределы #hd) -->
         <div id="bd">
             <div class="yui-gf">
                 <div class="yui-u first">
@@ -79,43 +85,32 @@
                     <h2>Experience</h2>
                 </div>
                 <div class="yui-u main">
-
                     <!-- Новая компания Example -->
                     <div class="job">
-                        <h2>Example</h2>
+                        <h2>Andersen</h2>
                         <h3>DevOps Engineer</h3>
-                        <h4>2023 — Present</h4>
+                        <h4>2022 — 2025</h4>
                         <p>
-                            Designed and implemented automated CI/CD pipelines using GitLab CI and GitHub Actions,
-                            reducing deployment time by 40%.
-                            Containerized legacy applications and orchestrated their migration to Kubernetes (EKS/GKE),
-                            improving scalability and resource utilization.
-                            Automated cloud infrastructure provisioning using Terraform (IaC) and configuration
-                            management with Ansible.
-                            Implemented comprehensive monitoring and alerting solutions using Prometheus and Grafana,
-                            ensuring 99.9% service availability.
+                            Built CI/CD pipelines with GitLab CI and GitHub Actions, reducing deployment time by 40%.
+                            Migrated legacy apps to Kubernetes (EKS/GKE), improving scalability and resource efficiency.
+                            Automated infrastructure provisioning with Terraform and Ansible. Implemented monitoring and
+                            alerting with Prometheus and Grafana, maintaining 99.9% availability.
                         </p>
                     </div>
 
-                    <!-- Твоя оригинальная компания Beltelecom -->
-                    <div class="job">
+                    <div class="job last">
                         <h2>Beltelecom</h2>
                         <h3>Engineer, Lead Engineer</h3>
-                        <h4>2011 — 2023</h4>
+                        <h4>2011 — 2022</h4>
                         <p>
-                            Designed, deployed and operated global streaming transport infrastructure delivering live
-                            and on‑demand video across multiple countries. Managed carrier and peering relationships,
-                            traffic engineering and capacity planning to ensure low‑latency, high‑throughput delivery.
-                            Implemented and maintained routing, MPLS/VPN, QoS and multicast solutions across WANs and
-                            CDN edge sites to optimize stream reliability and bandwidth utilization. Integrated
-                            monitoring and alerting; developed runbooks for incident response. Led troubleshooting and
-                            root‑cause analysis for network incidents and stream degradations. Optimized viewer QoE;
-                            achieved reduction in playback interruptions.
+                            Designed and operated streaming infrastructure for live and VOD delivery across multiple
+                            countries. Managed routing, MPLS/VPN, QoS, multicast, and CDN edge connectivity. Led traffic
+                            engineering, monitoring, incident response, and root-cause analysis, improving stream
+                            reliability and viewer QoE.
                         </p>
                     </div>
                 </div>
             </div>
-
 
             <div class="yui-gf">
                 <div class="yui-u first">
@@ -125,8 +120,10 @@
                     <div class="job last">
                         <h2>Personal web service</h2>
                         <h3>(Go, Docker, GitHub Actions, AWS, Caddy)</h3>
-                        <p>Implemented backend in Go and containerized the application with Docker. Built and published
-                            Docker images to Docker Hub; automated CI/CD using GitHub Actions to build, test, and deploy
+                        <p>Implemented backend in Go and containerized the application with Docker. Built and
+                            published
+                            Docker images to Docker Hub; automated CI/CD using GitHub Actions to build, test, and
+                            deploy
                             on push to main. Deployed to AWS EC2 and served via Caddy with automatic HTTPS.</p>
                     </div>
                 </div>
@@ -138,16 +135,37 @@
                 </div>
                 <div class="yui-u main">
                     <h2>The Bonch-Bruevich Saint Petersburg State University of Telecommunications</h2>
-                    <p>B.Sc. — Facilities of Communications with Mobile Objects</p>
+                    <h3>B.Sc. — Facilities of Communications with Mobile Objects</h3>
                     <p>Graduation Year: 5</p>
                 </div>
             </div>
-        </div>
+        </div> <!-- Конец #bd -->
 
+        <!-- Подвал -->
         <div id="ft">
-            <p>Starostsenko Rastislav — <a href="mailto:info@starostsenko.xyz">info@starostsenko.xyz</a></p>
+            <p>Starostsenko Rastislav — <a href="#" id="email-link-footer" data-user="{{.EmailUser}}"
+                    data-domain="{{.EmailDomain}}">Click to see email</a></p>
         </div>
-    </div>
+    </div> <!-- Конец #inner -->
+
+    <!-- Скрипт защиты почты (Обновлен: теперь обрабатывает обе ссылки - в шапке и подвале) -->
+    <script>
+        window.onload = function () {
+            const processLink = (id) => {
+                const link = document.getElementById(id);
+                if (!link) return;
+                const user = link.getAttribute('data-user');
+                const domain = link.getAttribute('data-domain');
+                if (user && domain) {
+                    const fullEmail = user + '@' + domain;
+                    link.href = 'mailto:' + fullEmail;
+                    link.innerText = fullEmail;
+                }
+            };
+            processLink('email-link');
+            processLink('email-link-footer');
+        };
+    </script>
 </body>
 
 </html>
