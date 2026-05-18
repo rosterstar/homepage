@@ -10,7 +10,6 @@
 
 <body>
     <div id="inner">
-        <!-- Шапка (Левая часть и Правая часть теперь изолированы) -->
         <div id="hd">
             <div>
                 <h1>Starostsenko Rastislav</h1>
@@ -26,7 +25,6 @@
             </div>
         </div>
 
-        <!-- Главный контентный блок (Вынесен за пределы #hd) -->
         <div id="bd">
             <div class="yui-gf">
                 <div class="yui-u first">
@@ -79,17 +77,15 @@
                 </div>
             </div>
 
-            <!-- Experience -->
             <div class="yui-gf">
                 <div class="yui-u first">
                     <h2>Experience</h2>
                 </div>
                 <div class="yui-u main">
-                    <!-- Новая компания Example -->
                     <div class="job">
                         <h2>Andersen</h2>
                         <h3>DevOps Engineer</h3>
-                        <h4>2022 — 2025</h4>
+                        <h4>2022 — 2024</h4>
                         <p>
                             Built CI/CD pipelines with GitLab CI and GitHub Actions, reducing deployment time by 40%.
                             Migrated legacy apps to Kubernetes (EKS/GKE), improving scalability and resource efficiency.
@@ -139,16 +135,15 @@
                     <p>Graduation Year: 5</p>
                 </div>
             </div>
-        </div> <!-- Конец #bd -->
+        </div>
 
-        <!-- Подвал -->
         <div id="ft">
             <p>Starostsenko Rastislav — <a href="#" id="email-link-footer" data-user="{{.EmailUser}}"
                     data-domain="{{.EmailDomain}}">Click to see email</a></p>
         </div>
-    </div> <!-- Конец #inner -->
+    </div>
 
-    <!-- Скрипт защиты почты (Обновлен: теперь обрабатывает обе ссылки - в шапке и подвале) -->
+
     <script>
         window.onload = function () {
             const processLink = (id) => {

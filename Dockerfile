@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26s-alpine AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 
 FROM alpine:3.20
 
-# Запуск от непривилегированного пользователя — best practice для production
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
@@ -24,7 +23,7 @@ COPY --from=builder /app/main .
 COPY --from=builder /app/templates ./templates
 COPY --from=builder /app/static ./static
 
-# Меняем владельца файлов на appuser
+
 RUN chown -R appuser:appgroup /app
 
 USER appuser

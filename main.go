@@ -16,9 +16,7 @@ type PageData struct {
 	EmailDomain string
 }
 
-// tmpl парсится один раз при старте — не при каждом запросе.
-// template.Must завершает программу с паникой если шаблон невалиден,
-// что лучше чем молча отдавать 500 на каждый запрос в prod.
+// tmpl парсится один раз при старте
 var tmpl = template.Must(template.ParseFiles("templates/index.html"))
 
 // Middleware для добавления заголовков безопасности

@@ -25,6 +25,12 @@ variable "ssh_public_key_path" {
   description = "Path to local SSH public key file"
 }
 
+variable "ssh_private_key_path" {
+  type        = string
+  description = "Path to local SSH private key file used for provisioning"
+  default     = "~/.ssh/id_ed25519"
+}
+
 variable "grafana_password" {
   type        = string
   description = "Admin password for Grafana dashboard"
@@ -43,7 +49,6 @@ variable "docker_image_tag" {
   default     = "latest"
 }
 
-# Динамическое получение домашнего IP для ограничения SSH
 data "http" "my_public_ip" {
   url = "https://checkip.amazonaws.com"
 }
@@ -117,46 +122,80 @@ resource "aws_instance" "app_server" {
   key_name               = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
-  # user_data теперь только устанавливает Docker и запускает стек.
-  # Конфигурационные файлы деплоятся отдельно через file provisioner ниже —
-  # это устраняет дублирование и позволяет обновлять конфиги без пересоздания EC2.
+  associate_public_ip_address = true
+
   user_data = <<-EOF
               #!/bin/bash
               set -euo pipefail
-
-              yum update -y
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
               # Docker
+              yum update -y
               amazon-linux-extras install docker -y
               systemctl start docker
               systemctl enable docker
               usermod -aG docker ec2-user
-
-              # Docker Compose v2 (плагин)
-              mkdir -p /usr/local/lib/docker/cli-plugins
-              curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" \
-                -o /usr/local/lib/docker/cli-plugins/docker-compose
-              chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-
-              # Директории для конфигов (файлы придут через provisioner)
-              mkdir -p /home/ec2-user/app/prometheus
-              chown -R ec2-user:ec2-user /home/ec2-user/app
+              curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
+                -o /usr/bin/docker-compose
+              chmod +x /usr/bin/docker-compose
+              touch /tmp/user_data_done
               EOF
-
   tags = {
     Name = "GoHomePage"
   }
+}
 
-  # Provisioner'ы выполняются после создания инстанса по SSH.
-  # Они копируют конфигурационные файлы прямо из репозитория — без дублирования кода.
+# =========================
+# ELASTIC IP & ASSOCIATION
+# =========================
+resource "aws_eip" "app_ip" {
+  domain = "vpc"
+  tags = {
+    Name = "homepage-ip"
+  }
+}
+
+resource "aws_eip_association" "eip_assoc" {
+  instance_id   = aws_instance.app_server.id
+  allocation_id = aws_eip.app_ip.id
+}
+
+resource "null_resource" "deploy" {
+  depends_on = [aws_eip_association.eip_assoc]
+
+  # Повторный деплой произойдёт если изменится тег образа, домен или инстанс
+  triggers = {
+    image_tag   = var.docker_image_tag
+    domain_name = var.domain_name
+    instance_id = aws_instance.app_server.id
+  }
+
   connection {
     type        = "ssh"
     user        = "ec2-user"
-    private_key = file("~/.ssh/id_ed25519")
+    private_key = file(var.ssh_private_key_path)
     host        = aws_eip.app_ip.public_ip
+    timeout     = "10m"
   }
 
-  # 1. .env с секретами (генерируется из переменных Terraform)
+  # ШАГ 0: Ждём завершения user_data и появления docker-compose
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'Waiting for user_data to finish...'",
+      "while [ ! -f /tmp/user_data_done ]; do sleep 10; echo 'Still waiting for user_data...'; done",
+      "echo 'Waiting for docker-compose binary...'",
+      "while [ ! -f /usr/bin/docker-compose ]; do sleep 5; done",
+      "echo 'All ready. Creating directories...'",
+      "mkdir -p /home/ec2-user/app/prometheus",
+      "chown -R ec2-user:ec2-user /home/ec2-user/app",
+    ]
+  }
+
+  # 1. .env с секретами (генерируется из Terraform переменных)
   provisioner "file" {
     content = templatefile("${path.module}/.env.tpl", {
       email_user       = var.email_user
@@ -167,44 +206,35 @@ resource "aws_instance" "app_server" {
     destination = "/home/ec2-user/app/.env"
   }
 
-  # 2. docker-compose.yml из репозитория (единственный источник правды)
+  # 2. docker-compose.yml
   provisioner "file" {
-    source      = "${path.module}/docker-compose.yml"
+    source      = "${path.module}/../docker-compose.yml"
     destination = "/home/ec2-user/app/docker-compose.yml"
   }
 
-  # 3. Caddyfile — генерируется из шаблона (подставляем domain и hash)
+  # 3. Caddyfile из шаблона (domain + bcrypt hash)
   provisioner "file" {
     content = templatefile("${path.module}/Caddyfile.tpl", {
       domain_name              = var.domain_name
-      prometheus_password_hash = var.prometheus_password_hash
+      prometheus_password_hash = replace(var.prometheus_password_hash, "$", "$$")
     })
     destination = "/home/ec2-user/app/Caddyfile"
   }
 
-  # 4. prometheus.yml из репозитория
+  # 4. prometheus.yml
   provisioner "file" {
-    source      = "${path.module}/prometheus/prometheus.yml"
+    source      = "${path.module}/../prometheus/prometheus.yml"
     destination = "/home/ec2-user/app/prometheus/prometheus.yml"
   }
 
-  # 5. Запускаем стек
+  # 5. Запуск стека
   provisioner "remote-exec" {
     inline = [
       "cd /home/ec2-user/app",
-      "docker compose pull",
-      "docker compose up -d",
+      "sudo docker-compose pull",
+      "sudo docker-compose up -d",
+      "echo 'Deployment completed successfully!'",
     ]
-  }
-}
-
-# =========================
-# ELASTIC IP
-# =========================
-resource "aws_eip" "app_ip" {
-  instance = aws_instance.app_server.id
-  tags = {
-    Name = "homepage-ip"
   }
 }
 

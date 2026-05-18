@@ -1,7 +1,8 @@
-version: '3.8'
-
 services:
   app:
+    # Переменные подхватываются из .env (который генерирует Terraform)
+    # Одинарный $ — стандартный синтаксис Docker Compose для подстановки из .env
+    # Двойной $$ нужен ТОЛЬКО внутри templatefile() в Terraform — здесь его быть не должно
     image: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
     restart: always
     env_file:
@@ -11,25 +12,22 @@ services:
       options:
         max-size: "10m"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/"]
-      interval: 30s
-      timeout: 5s
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && exec 3<&-"]
+      interval: 15s
+      timeout: 3s
       retries: 3
-      start_period: 10s
+      start_period: 5s
 
   caddy:
-    image: caddy:2
+    image: caddy:2.8-alpine
     restart: always
     ports:
       - "80:80"
       - "443:443"
-    environment:
-      - DOMAIN_NAME=${DOMAIN_NAME}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
-    # Ждём не просто запуска контейнера, а реальной готовности сервисов
     depends_on:
       app:
         condition: service_healthy
@@ -46,40 +44,36 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
-    # Порт 9090 не экспонируем наружу — доступ только через Caddy (subdomain + basic_auth)
     extra_hosts:
-      # Позволяет Prometheus достучаться до node-exporter на хосте (network_mode: host)
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      test: ["CMD", "nc", "-z", "localhost", "9090"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 5s
 
   grafana:
     image: grafana/grafana-oss:11.1.0
     container_name: grafana
     restart: unless-stopped
-    environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    # Пароль берётся из .env через env_file в секции app.
+    # Здесь дублировать не нужно — Grafana сама читает GF_* переменные из окружения.
+    env_file:
+      - .env
     volumes:
       - grafana_data:/var/lib/grafana
-    # Порт 3000 не экспонируем — доступ через Caddy (grafana.domain)
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "nc", "-z", "localhost", "3000"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 20s
+      start_period: 10s
 
   node-exporter:
     image: prom/node-exporter:v1.8.1
     container_name: node-exporter
     restart: unless-stopped
-    # network_mode: host — единственный способ получить метрики хост-машины EC2
-    # (а не контейнера). Слушает на хостовом :9100.
     network_mode: host
     pid: host
     volumes:
