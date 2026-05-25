@@ -1,7 +1,7 @@
 # Go bin
 rserver.exe
 main.exe
-# Секреты — НИКОГДА не коммитим
+# Секреты
 .env
 terraform.tfvars
 
