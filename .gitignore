@@ -1,12 +1,9 @@
 # Go bin
 rserver.exe
 main.exe
-# Секреты — НИКОГДА не коммитим
+# Secrets
 .env
 terraform.tfvars
-
-# PDF резюме (генерируется отдельно)
-static/resume.pdf
 
 # Ignore .git
 .git
@@ -40,3 +37,6 @@ override.tf.json
 .idea/
 .DS_Store
 Thumbs.db
+
+#Temporary unavailable files
+static/resume.pdf
