@@ -37,6 +37,3 @@ override.tf.json
 .idea/
 .DS_Store
 Thumbs.db
-
-#Temporary unavailable files
-static/resume.pdf
