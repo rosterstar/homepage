@@ -1,7 +1,11 @@
 # Go bin
 rserver.exe
 main.exe
+<<<<<<< HEAD
 # Secrets
+=======
+# Секреты
+>>>>>>> 9617fc7dd55088e3c61529adfafc8d0448d45e40
 .env
 terraform.tfvars
 

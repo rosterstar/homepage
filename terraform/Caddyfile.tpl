@@ -1,6 +1,3 @@
-# Этот файл генерируется Terraform из Caddyfile.tpl.
-# Для локального использования — применяй ./Caddyfile напрямую.
-
 (security_headers) {
     header {
         X-Frame-Options "DENY"
