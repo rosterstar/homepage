@@ -2,7 +2,7 @@ services:
   app:
     # Переменные подхватываются из .env (который генерирует Terraform)
     # Одинарный $ — стандартный синтаксис Docker Compose для подстановки из .env
-    # Двойной $$ нужен ТОЛЬКО внутри templatefile() в Terraform — здесь его быть не должно
+    # Двойной $$ нужен ТОЛЬКО внутри templatefile() 
     image: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
     restart: always
     env_file:
@@ -12,7 +12,7 @@ services:
       options:
         max-size: "10m"
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && exec 3<&-"]
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8080"]
       interval: 15s
       timeout: 3s
       retries: 3
